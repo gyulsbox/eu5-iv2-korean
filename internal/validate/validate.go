@@ -41,6 +41,7 @@ const (
 	RuleEmptyTranslation  = "empty-translation"
 	RuleUnknownKey        = "unknown-key"
 	RuleShadowsBaseline   = "shadows-baseline"
+	RuleLayerMismatch     = "layer-mismatch"
 	RuleDoNotTranslate    = "do-not-translate"
 	RuleMissingBOM        = "missing-bom"
 	RuleBadHeader         = "bad-header"

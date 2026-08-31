@@ -49,7 +49,7 @@ type Result struct {
 	// Out is our pack's inventory, nil when no output was given.
 	Out *inventory.Inventory
 	// BaselineKeys is the set of keys owned by the base game or other mods.
-	BaselineKeys map[string]string
+	BaselineKeys map[string]BaselineRef
 	// Shadowed lists IV2's own keys that also exist in a baseline. These are
 	// the keys our pack must leave alone: translating one means overriding
 	// somebody else's localization, which is what crashed the last pack.
@@ -58,9 +58,28 @@ type Result struct {
 	DoNotTranslateKeys []string
 }
 
+// BaselineRef records where a baseline key was found. The layer matters:
+// EU5 splits localization across dlc, in_game, loading_screen and main_menu,
+// and a collision inside the same layer is unambiguous while one across
+// layers may or may not bite depending on when each is loaded. Both are
+// reported as errors, but the layer is carried so a human can tell them apart.
+type BaselineRef struct {
+	Root  string `json:"root"`
+	File  string `json:"file"`
+	Layer string `json:"layer"`
+}
+
+// Where renders a reference for a message.
+func (b BaselineRef) Where() string {
+	if b.Layer != "" && b.Layer != "." {
+		return b.Root + " [" + b.Layer + "] " + b.File
+	}
+	return b.Root + " " + b.File
+}
+
 // Run performs a full validation pass.
 func Run(o Options) (*Result, error) {
-	res := &Result{Report: &Report{}, BaselineKeys: map[string]string{}}
+	res := &Result{Report: &Report{}, BaselineKeys: map[string]BaselineRef{}}
 	rep := res.Report
 
 	src, err := inventory.Scan(o.Source, o.sourceLang())
@@ -103,7 +122,9 @@ func Run(o Options) (*Result, error) {
 			}
 			for _, e := range inv.Entries {
 				if _, seen := res.BaselineKeys[e.Key]; !seen {
-					res.BaselineKeys[e.Key] = b + "/" + e.File
+					res.BaselineKeys[e.Key] = BaselineRef{
+						Root: b, File: e.File, Layer: e.Layer,
+					}
 				}
 			}
 		}
@@ -181,12 +202,25 @@ func Run(o Options) (*Result, error) {
 			continue
 		}
 
-		if where, clash := res.BaselineKeys[e.Key]; clash {
+		if ref, clash := res.BaselineKeys[e.Key]; clash {
 			rep.add(Finding{
 				Severity: Error, Rule: RuleShadowsBaseline, Key: e.Key,
 				File: e.File, Line: e.Line,
-				Message:     "key is also defined by " + where + "; translating it overrides their localization",
+				Message: "key is also defined by " + ref.Where() +
+					"; translating it overrides their localization",
 				Translation: e.Value,
+			})
+		}
+
+		// Our pack must define a key in the same layer IV2 does. EU5 loads
+		// dlc, in_game, loading_screen and main_menu separately, so a
+		// translation filed under the wrong one is simply never seen.
+		if srcE := srcEntry[e.Key]; srcE.Layer != "" && srcE.Layer != e.Layer {
+			rep.add(Finding{
+				Severity: Error, Rule: RuleLayerMismatch, Key: e.Key,
+				File: e.File, Line: e.Line,
+				Message: fmt.Sprintf("IV2 defines this key in %s but the pack puts it in %s; "+
+					"EU5 loads those layers separately", srcE.Layer, e.Layer),
 			})
 		}
 
