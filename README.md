@@ -23,16 +23,17 @@ So the first principle here is narrow and absolute:
 
 ## Status
 
-`extract` is implemented. `diff`, `validate`, `translate` and `build` are not
-yet written.
+`extract` and `validate` are implemented. `diff`, `translate` and `build` are
+not yet written.
 
 ## Usage
 
 ```
-iv2loc extract --src <path to IV2 mod> [--json inventory.json]
+iv2loc extract  --src <IV2 path> [--json inventory.json]
+iv2loc validate --src <IV2 path> [--out <pack>] [--baseline <tree>]...
 ```
 
-Flags:
+### extract
 
 | flag | meaning |
 |---|---|
@@ -41,6 +42,75 @@ Flags:
 | `--json` | write the full inventory, including every translation group, to a file |
 | `--top` | how many of the largest prose groups to list (default 15) |
 | `--show-foreign` | list every un-namespaced key shape instead of the top 25 |
+
+### validate
+
+| flag | meaning |
+|---|---|
+| `--src` | path to the IV2 mod directory (required) |
+| `--out` | the generated Korean pack; omit to run source-side checks only |
+| `--baseline` | a localization tree we must not redefine; repeatable |
+| `--json` | write the full report to a file |
+| `--limit` | findings to print per rule (default 20) |
+
+Exits non-zero when there is any blocking finding, so it drops straight into
+a build script.
+
+## What validate enforces
+
+Every rule below is covered by a test that feeds it a violation and asserts it
+is caught.
+
+| rule | severity | meaning |
+|---|---|---|
+| `token-mismatch` | error | the translation lost, gained or renamed markup |
+| `leaked-placeholder` | error | a `⟦T1⟧` survived into the output; build failed to substitute |
+| `empty-translation` | error | a non-empty source became an empty string |
+| `do-not-translate` | error | an engine token like a colour name was translated |
+| `unknown-key` | error | the pack defines a key IV2 does not |
+| `shadows-baseline` | error | the pack defines a key the base game or another mod owns |
+| `missing-bom` | error | the game would skip the file silently |
+| `bad-header` | error | first line is not `l_korean:` |
+| `bad-filename` | error | name does not end in `_l_korean.yml`, or the file is outside `localization/korean/` |
+| `replace-dir` | error | a key sits under `replace/`, which should never be necessary |
+| `duplicate-key` | warn | defined in more than one output file |
+| `untranslated` | warn | prose identical to the English source |
+| `malformed-source` | warn | IV2's own defect, recovered |
+
+The central one is `token-mismatch`. Its invariant is that the multiset of
+markup tokens in a source string equals the multiset in its translation. The
+multiset is order-insensitive on purpose: Korean word order moves clauses, and
+a translation that reorders `$A$` and `$B$` is correct while one that drops
+`$B$` is not.
+
+Any key that fails validation is listed in `fallback_keys`, and
+`validate.Fallback` returns the English source for it. That is the guarantee
+worth stating plainly: **a bad translation can make the game read wrong, but it
+cannot make the game crash.**
+
+### The collision check needs your files
+
+`validate` cannot prove the pack redefines nothing until it is given the trees
+to compare against. With no `--baseline` it says so rather than reporting a
+pass:
+
+```
+═══ base-game / foreign-mod collisions ═══
+  NOT CHECKED - no --baseline given.
+```
+
+To prove it, pass the base game and every other mod in the load order:
+
+```
+iv2loc validate --src <IV2> --out <pack> \
+  --baseline "<EU5>/game" \
+  --baseline "<workshop>/<FUM id>" \
+  --baseline "<workshop>/<Glorp UI id>" \
+  --baseline "<workshop>/<CMM id>"
+```
+
+Baselines are scanned in both English and Korean, because a key the base game
+defines in either language is a key we must not touch.
 
 ## What extract found in IV2 2.0.5
 
@@ -95,14 +165,17 @@ IV_IDEAGROUP_COST_TT_ADM
 
 They are engine-prefixed keys naming IV2-owned objects, so they are almost
 certainly ours to translate — but "almost certainly" is what killed the last
-pack. `validate` must cross-check them against the base game and against FUM,
-Glorp UI and CMM, and prove zero collisions.
+pack. `validate --baseline` settles it, and until it is run against the real
+trees this stays unproven.
 
-**Some values must never be translated.** `iv2_idea_alert_*_color` holds the
-literal string `green` / `yellow`, which the engine reads as a colour name, not
-as display text. `Idea_Variation_2__iv2_alert_setting_1` holds an identifier.
-Roughly 30 keys, and translating any of them breaks behaviour rather than just
-reading badly. `translate` needs a do-not-translate rule.
+**62 keys must never be translated,** and `validate` refuses them. 26 are
+`iv2_*_color`, whose value is the literal string `green` or `yellow` that the
+engine looks up as a colour. The other 36 hold their own key name as their
+value, e.g. `iv2_idea_alert: "iv2_idea_alert"`. Whether those are engine
+lookups or an upstream oversight, copying them verbatim gives Korean players
+exactly what English players see, while translating them risks breaking an
+alert. Every one was checked by hand; the rule has no false positives on
+IV2 2.0.5.
 
 **8 keys are malformed upstream.** IV2 ships eight values with a missing
 closing quote, all in `01_IV2_setup_l_english.yml`:

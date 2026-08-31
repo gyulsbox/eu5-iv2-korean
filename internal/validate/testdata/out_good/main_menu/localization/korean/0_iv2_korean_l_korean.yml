@@ -1,0 +1,7 @@
+﻿l_korean:
+ iv2_ideagroup_title_adm_1: "혁신 이념"
+ iv2_costs_tt: "해금하려면 #bold 25 @gold!#! 필요."
+ iv2_msg: "$iv2_ideagroup_title_adm_1$$iv2_message_selected_ig$"
+ iv2_idea_alert_adm_color: "green"
+ iv2_desc: "연구원은 매달 [iv2_researcher_upkeep|e] 비용이 듭니다.\n도움이 됩니다."
+ iv2_level_1: "레벨 1"

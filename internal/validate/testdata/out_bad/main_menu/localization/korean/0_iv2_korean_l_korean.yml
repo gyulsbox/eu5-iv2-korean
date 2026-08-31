@@ -1,0 +1,9 @@
+﻿l_korean:
+ iv2_ideagroup_title_adm_1: "$LOST$ 혁신 이념"
+ iv2_costs_tt: "#bold 25 소요 해금."
+ iv2_desc: ""
+ iv2_level_1: "레벨 ⟦N1⟧"
+ iv2_idea_alert_adm_color: "초록"
+ iv2_msg: "$iv2_message_selected_ig$ $iv2_ideagroup_title_adm_1$"
+ iv2_invented_key: "원문에 없는 키"
+ cw_settings_shared: "공용 설정"
