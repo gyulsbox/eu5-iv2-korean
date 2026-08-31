@@ -361,3 +361,67 @@ func TestReadCatalogRejectsWrongVersion(t *testing.T) {
 		t.Error("ReadCatalog accepted an unknown version")
 	}
 }
+
+func TestBuildResolvesParticlesAfterSubstitution(t *testing.T) {
+	// A translated template keeps the paired form because the placeholder's
+	// value is unknown while translating. Once build substitutes a number the
+	// value IS known, so the particle must resolve - otherwise the player
+	// reads "4으로(로)" where the game should say "4로".
+	inv, err := inventory.Scan(fixture, "english")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cat := NewCatalog(inventory.Groups(inv.Entries))
+	var patched bool
+	for i := range cat.Units {
+		if cat.Units[i].Template == "Level ⟦N1⟧" {
+			cat.Units[i].Korean = "⟦N1⟧으로(로) 설정"
+			patched = true
+		}
+	}
+	if !patched {
+		t.Fatal("fixture changed: no Level ⟦N1⟧ unit")
+	}
+
+	dir, _ := buildInto(t, cat)
+	got := readBuilt(t, dir)
+
+	// 1 reads as 일, which ends in ㄹ, so it takes 로.
+	if got["iv2_level_1"] != "1로 설정" {
+		t.Errorf("iv2_level_1 = %q, want %q", got["iv2_level_1"], "1로 설정")
+	}
+	// 3 reads as 삼, which ends in ㅁ, so it takes 으로.
+	if got["iv2_level_3"] != "3으로 설정" {
+		t.Errorf("iv2_level_3 = %q, want %q", got["iv2_level_3"], "3으로 설정")
+	}
+}
+
+func TestBuildKeepsPairedParticleAfterEngineMarkup(t *testing.T) {
+	// A ⟦T1⟧ becomes markup the engine expands at runtime, so its value is
+	// still unknown after substitution and the pair must survive.
+	inv, err := inventory.Scan(fixture, "english")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cat := NewCatalog(inventory.Groups(inv.Entries))
+	var patched bool
+	for i := range cat.Units {
+		if cat.Units[i].Rep == "iv2_desc" {
+			cat.Units[i].Korean = "연구원은 매달 ⟦T1⟧이(가) 듭니다.⟦T2⟧도움이 됩니다."
+			patched = true
+		}
+	}
+	if !patched {
+		t.Fatal("fixture changed: no iv2_desc unit")
+	}
+
+	dir, _ := buildInto(t, cat)
+	got := readBuilt(t, dir)
+
+	if !strings.Contains(got["iv2_desc"], "이(가)") {
+		t.Errorf("paired particle was wrongly resolved after markup: %q", got["iv2_desc"])
+	}
+	if !strings.Contains(got["iv2_desc"], "[iv2_researcher_upkeep|e]") {
+		t.Errorf("markup lost: %q", got["iv2_desc"])
+	}
+}

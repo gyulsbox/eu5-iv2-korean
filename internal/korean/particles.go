@@ -1,4 +1,8 @@
-package translate
+// Package korean holds the mechanical Korean-language cleanups that both the
+// translation stage and the build stage need. It lives on its own because
+// build must apply it after substituting a template's placeholders, and
+// translate must apply it before storing one.
+package korean
 
 import (
 	"strings"
@@ -148,7 +152,7 @@ func resolve(before string, p particlePair) string {
 	return p.afterVowel
 }
 
-// PolishCatalogValue applies every mechanical cleanup to one translated string.
-func PolishCatalogValue(s string) string {
+// Polish applies every mechanical cleanup to one Korean string.
+func Polish(s string) string {
 	return FixParticles(s)
 }

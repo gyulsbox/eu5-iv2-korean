@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/inventory"
+	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/korean"
 	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/paradox"
 	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/validate"
 )
@@ -79,7 +80,7 @@ func Run(o Options) (*Stats, error) {
 	}
 
 	groups := inventory.Groups(src.Entries)
-	korean := o.Catalog.Index()
+	translations := o.Catalog.Index()
 
 	// Map each key to the group covering it, along with the substitutions
 	// that rebuild that key's own string from the group template.
@@ -108,9 +109,15 @@ func Run(o Options) (*Stats, error) {
 			stats.DoNotTouch++
 		default:
 			b := bind[e.Key]
-			if ko, ok := korean[b.template]; ok {
+			if ko, ok := translations[b.template]; ok {
 				if rendered, filled := inventory.Detemplatize(ko, b.member.Tokens, b.member.Numbers); filled {
-					value = rendered
+					// Resolve particles once more now that the placeholders
+					// are gone. A ⟦N1⟧ has become a literal number, so the
+					// particle after it is no longer a guess: the template's
+					// "⟦N1⟧으로(로)" becomes "4로". A ⟦T1⟧ has become engine
+					// markup the game expands at runtime, so the particle
+					// after that one stays paired.
+					value = korean.Polish(rendered)
 				}
 			}
 		}

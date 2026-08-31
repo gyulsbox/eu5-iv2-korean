@@ -1,4 +1,4 @@
-package translate
+package korean
 
 import "testing"
 

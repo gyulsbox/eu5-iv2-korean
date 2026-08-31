@@ -14,6 +14,7 @@ import (
 
 	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/build"
 	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/inventory"
+	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/korean"
 	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/validate"
 )
 
@@ -179,7 +180,7 @@ func Run(ctx context.Context, client anthropic.Client, cat *build.Catalog, o Opt
 						}
 						continue
 					}
-					cat.Units[it.Index].Korean = PolishCatalogValue(ko)
+					cat.Units[it.Index].Korean = korean.Polish(ko)
 					stats.Accepted++
 				}
 			}
