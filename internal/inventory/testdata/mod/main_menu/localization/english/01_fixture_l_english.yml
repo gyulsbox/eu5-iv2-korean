@@ -1,0 +1,14 @@
+﻿l_english:
+ # Real shapes lifted from The Idea Variation 2, trimmed to a fixture.
+ iv2_ideagroup_title_adm_1: "Innovativeness Ideas"
+ iv2_ga_ideagroup_adm_1_1: "Patron of the Arts"
+ iv2_level_1: "Level 1"
+ iv2_level_2: "Level 2"
+ iv2_level_3: "Level 3"
+ setting_idea_group_limit_1: "4 Idea Groups"
+ setting_idea_group_limit_2: "6 Idea Groups"
+ game_concept_iv2_researcher_desc: "Researchers are added by the [iv2_mod|e] as a special agent type.\nThey cost [iv2_researcher_upkeep|e] each month."
+ iv2_appoint_researcher_adm_act_past: "[SCOPE.sCharacter('recipient').GetName] was appointed as [iv2_researcher_adm|e].
+ ADD_IDEAGROUP_SLOT_TOOLTIP_ADM: "Unlock a new Administrative Ideagroup Slot."
+ iv2_costs_tt: "Costs #bold 25 @gold!#! to unlock."
+ iv2_empty_map: ""
