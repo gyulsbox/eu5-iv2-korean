@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/build"
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/translate"
+	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/korean"
 )
 
 type polishOpts struct {
@@ -43,7 +43,7 @@ func runPolish(args []string) error {
 		if u.Korean == "" {
 			continue
 		}
-		fixed := translate.PolishCatalogValue(u.Korean)
+		fixed := korean.Polish(u.Korean)
 		if fixed == u.Korean {
 			continue
 		}
