@@ -1,6 +1,7 @@
 package validate
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -285,5 +286,12 @@ func TestCorrectPackHasNoLayerMismatch(t *testing.T) {
 	}
 	if n := countRule(res.Report, RuleLayerMismatch); n != 0 {
 		t.Errorf("layer-mismatch findings = %d on a correct pack, want 0", n)
+	}
+}
+
+func writeFile(t *testing.T, path, body string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }
