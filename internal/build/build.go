@@ -9,10 +9,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/inventory"
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/korean"
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/paradox"
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/validate"
+	"github.com/gyulsbox/eu5-iv2-korean/internal/inventory"
+	"github.com/gyulsbox/eu5-iv2-korean/internal/korean"
+	"github.com/gyulsbox/eu5-iv2-korean/internal/paradox"
+	"github.com/gyulsbox/eu5-iv2-korean/internal/validate"
 )
 
 // LoadOrderPrefix is prepended to every generated file name.

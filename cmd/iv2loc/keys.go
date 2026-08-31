@@ -7,8 +7,8 @@ import (
 	"os"
 	"sort"
 
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/inventory"
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/validate"
+	"github.com/gyulsbox/eu5-iv2-korean/internal/inventory"
+	"github.com/gyulsbox/eu5-iv2-korean/internal/validate"
 )
 
 type keysOpts struct {

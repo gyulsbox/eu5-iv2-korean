@@ -3,8 +3,8 @@ package diff
 import (
 	"testing"
 
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/build"
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/inventory"
+	"github.com/gyulsbox/eu5-iv2-korean/internal/build"
+	"github.com/gyulsbox/eu5-iv2-korean/internal/inventory"
 )
 
 // entries builds a source inventory from key/value pairs.

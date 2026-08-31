@@ -8,8 +8,8 @@ import (
 
 	"github.com/anthropics/anthropic-sdk-go"
 
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/build"
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/translate"
+	"github.com/gyulsbox/eu5-iv2-korean/internal/build"
+	"github.com/gyulsbox/eu5-iv2-korean/internal/translate"
 )
 
 type translateOpts struct {

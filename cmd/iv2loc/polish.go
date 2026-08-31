@@ -4,8 +4,8 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/build"
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/korean"
+	"github.com/gyulsbox/eu5-iv2-korean/internal/build"
+	"github.com/gyulsbox/eu5-iv2-korean/internal/korean"
 )
 
 type polishOpts struct {

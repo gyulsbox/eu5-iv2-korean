@@ -16,8 +16,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/inventory"
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/paradox"
+	"github.com/gyulsbox/eu5-iv2-korean/internal/inventory"
+	"github.com/gyulsbox/eu5-iv2-korean/internal/paradox"
 )
 
 // Severity separates findings that must block a build from findings a human

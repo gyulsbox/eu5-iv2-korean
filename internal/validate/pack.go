@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/inventory"
+	"github.com/gyulsbox/eu5-iv2-korean/internal/inventory"
 )
 
 // Options configures a validation run.

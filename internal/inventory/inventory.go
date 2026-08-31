@@ -12,7 +12,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/paradox"
+	"github.com/gyulsbox/eu5-iv2-korean/internal/paradox"
 )
 
 // Entry is one localization key together with where it came from.

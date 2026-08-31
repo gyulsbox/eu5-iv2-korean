@@ -1,4 +1,4 @@
-module github.com/gyulsbox/EUV_Idea_Variation_2_kr
+module github.com/gyulsbox/eu5-iv2-korean
 
 go 1.24
 

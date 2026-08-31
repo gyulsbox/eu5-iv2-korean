@@ -12,10 +12,10 @@ import (
 
 	"github.com/anthropics/anthropic-sdk-go"
 
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/build"
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/inventory"
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/korean"
-	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/validate"
+	"github.com/gyulsbox/eu5-iv2-korean/internal/build"
+	"github.com/gyulsbox/eu5-iv2-korean/internal/inventory"
+	"github.com/gyulsbox/eu5-iv2-korean/internal/korean"
+	"github.com/gyulsbox/eu5-iv2-korean/internal/validate"
 )
 
 // DefaultModel is Claude Haiku 4.5. The job is bounded, highly repetitive UI
