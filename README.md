@@ -23,14 +23,15 @@ So the first principle here is narrow and absolute:
 
 ## Status
 
-`extract` and `validate` are implemented. `diff`, `translate` and `build` are
-not yet written.
+`extract`, `validate` and `keys` are implemented. `diff`, `translate` and
+`build` are not yet written.
 
 ## Usage
 
 ```
 iv2loc extract  --src <IV2 path> [--json inventory.json]
 iv2loc validate --src <IV2 path> [--out <pack>] [--baseline <tree>]...
+iv2loc keys     --src <tree>... [--out keys.txt]
 ```
 
 ### extract
@@ -51,7 +52,14 @@ iv2loc validate --src <IV2 path> [--out <pack>] [--baseline <tree>]...
 | `--out` | the generated Korean pack; omit to run source-side checks only |
 | `--baseline` | a localization tree we must not redefine; repeatable |
 | `--json` | write the full report to a file |
+| `--baseline-keys` | key digest from `iv2loc keys`, when the tree is too large to move; repeatable |
 | `--limit` | findings to print per rule (default 20) |
+
+### keys
+
+Reduces a localization tree to just its key names and layers. Values are what
+make such a tree large, so dropping them turns something impractical to move
+into a small text file. Only useful as input to `validate --baseline-keys`.
 
 Exits non-zero when there is any blocking finding, so it drops straight into
 a build script.
@@ -69,6 +77,7 @@ is caught.
 | `do-not-translate` | error | an engine token like a colour name was translated |
 | `unknown-key` | error | the pack defines a key IV2 does not |
 | `shadows-baseline` | error | the pack defines a key the base game or another mod owns |
+| `layer-mismatch` | error | the pack files a key under a different layer than IV2 defines it in |
 | `layer-mismatch` | error | the pack files a key under a different layer than IV2 defines it in |
 | `missing-bom` | error | the game would skip the file silently |
 | `bad-header` | error | first line is not `l_korean:` |
@@ -89,29 +98,72 @@ Any key that fails validation is listed in `fallback_keys`, and
 worth stating plainly: **a bad translation can make the game read wrong, but it
 cannot make the game crash.**
 
-### The collision check needs your files
+### The collision check is optional, and on IV2 2.0.5 it finds nothing
 
-`validate` cannot prove the pack redefines nothing until it is given the trees
-to compare against. With no `--baseline` it says so rather than reporting a
-pass:
+The rule that actually keeps us out of the base game is `unknown-key`: the
+pack may only define keys that appear in IV2's own English files. That is
+structural, needs nothing from outside the mod, and is exactly what the old
+pack violated by shipping 11 files of stale base-game and third-party
+localization that had nothing to do with IV2.
+
+`shadows-baseline` is a second line of defence for one narrow case: IV2 itself
+redefining a key the base game owns. That case can be measured without the
+base game at all:
 
 ```
-═══ base-game / foreign-mod collisions ═══
-  NOT CHECKED - no --baseline given.
+un-namespaced keys                     6249
+  ...whose value references iv2        5953   <- clearly IV2's own
+  ...whose value never mentions iv2     296   <- candidates
 ```
 
-To prove it, pass the base game and every other mod in the load order:
+and all 296 candidates turn out to be IV2's too — `iv_guard_infantry_age_1`,
+`rule_iv_game_rule_idea_group_limit`, `setting_idea_group_limit_1`,
+`flogi_debug_1_op_1`, `TAB_TOOLTIP_NAT_IDEA_SUB_ADM_CLICK_1`. Every one
+carries an `iv_` prefix or names an Idea Variation concept. **IV2's
+localization contains no base-game key**, so this check has nothing to find
+and is not a prerequisite for building.
+
+It stays because it costs nothing and a future IV2 version could add a
+colliding key, which `diff` would surface. With no baseline given it reports
+`NOT CHECKED` rather than a pass, since silence would read as a guarantee it
+has not made.
+
+If you do want to run it and the tree is inconveniently large, reduce it to
+key names first:
 
 ```
-iv2loc validate --src <IV2> --out <pack> \
-  --baseline "<EU5>/game" \
-  --baseline "<workshop>/<FUM id>" \
-  --baseline "<workshop>/<Glorp UI id>" \
-  --baseline "<workshop>/<CMM id>"
+iv2loc keys --src "<EU5>/game" --out basegame.keys
+iv2loc validate --src <IV2> --out <pack> --baseline-keys basegame.keys
 ```
 
-Baselines are scanned in both English and Korean, because a key the base game
-defines in either language is a key we must not touch.
+`--baseline` takes the directory **above** the layers. EU5 does not keep its
+localization in one place; it splits it across four layers, each with its own
+tree:
+
+```
+game/dlc/<dlc name>/localization/{english,korean}/…
+game/in_game/localization/{english,korean}/…
+game/loading_screen/localization/{english,korean}/…
+game/main_menu/localization/{english,korean}/…
+```
+
+The scan walks all of them, so one `--baseline <EU5>/game` covers the lot, and
+a test asserts a key is found in each of the four. A scan that only looked at
+`<root>/localization` would find nothing and report a clean pass, which is the
+worst possible outcome for this particular check.
+
+Baselines are read in both English and Korean, because a key the base game
+defines in either language is one we must not touch. Matching ignores the
+layer — a base-game key in `in_game` is still a key IV2 must not redefine from
+`main_menu` — but findings name the layer, since a same-layer collision is
+unambiguous while a cross-layer one depends on load timing.
+
+### Layers matter for our output too
+
+IV2 keeps all of its own localization under `main_menu/`, so our pack must
+mirror that. A translation filed under the wrong layer produces no error at
+all in game — the string is simply never seen, which is worse than a loud
+failure. `layer-mismatch` catches it.
 
 ## What extract found in IV2 2.0.5
 
