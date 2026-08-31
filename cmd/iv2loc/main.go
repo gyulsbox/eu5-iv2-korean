@@ -30,6 +30,8 @@ func main() {
 		err = runTranslate(args)
 	case "polish":
 		err = runPolish(args)
+	case "diff":
+		err = runDiff(args)
 	case "-h", "--help", "help":
 		usage()
 		return
@@ -74,6 +76,11 @@ usage:
         Apply the mechanical Korean cleanups to a catalog. translate already
         does this to everything it writes.
 
+  iv2loc diff --src <IV2 mod path> --catalog c.json [--out <pack>] [--update]
+        After an IV2 update, report what is new, reworded or gone, and with
+        --update merge it into the catalog keeping every translation whose
+        English is unchanged.
+
 extract flags:
 `)
 	ef := flag.NewFlagSet("extract", flag.ContinueOnError)
@@ -110,4 +117,10 @@ extract flags:
 	registerPolishFlags(pf, &polishOpts{})
 	pf.SetOutput(os.Stderr)
 	pf.PrintDefaults()
+
+	fmt.Fprint(os.Stderr, "\ndiff flags:\n")
+	df := flag.NewFlagSet("diff", flag.ContinueOnError)
+	registerDiffFlags(df, &diffOpts{})
+	df.SetOutput(os.Stderr)
+	df.PrintDefaults()
 }

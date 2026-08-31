@@ -23,8 +23,8 @@ So the first principle here is narrow and absolute:
 
 ## Status
 
-`extract`, `validate`, `keys`, `build` and `translate` are implemented. `diff`
-is not yet written.
+Complete: `extract`, `diff`, `validate`, `translate`, `build`, plus `keys` and
+`polish`.
 
 ## Usage
 
@@ -34,12 +34,22 @@ iv2loc validate --src <IV2 path> [--out <pack>] [--baseline <tree>]...
 iv2loc keys     --src <tree>... [--out keys.txt]
 iv2loc build    --src <IV2 path> --out <mod dir> [--catalog c.json]
 iv2loc translate --catalog c.json [--glossary glossary.json]
+iv2loc diff     --src <IV2 path> --catalog c.json [--out <pack>] [--update]
+iv2loc polish   --catalog c.json
 ```
 
-The full loop:
+First build:
 
 ```
 iv2loc build     --src <IV2> --init-catalog catalog.json
+iv2loc translate --catalog catalog.json --glossary glossary.json
+iv2loc build     --src <IV2> --out <pack> --catalog catalog.json
+```
+
+After an IV2 update, the same three commands with `diff` in front:
+
+```
+iv2loc diff      --src <IV2> --catalog catalog.json --out <pack> --update
 iv2loc translate --catalog catalog.json --glossary glossary.json
 iv2loc build     --src <IV2> --out <pack> --catalog catalog.json
 ```
@@ -292,6 +302,52 @@ value is unknown at translation time, so its final consonant is unknown too.
 The model is told to use the paired forms the game's own Korean uses — 을(를),
 이(가), 은(는), 와(과), 으로(로) — wherever a particle attaches directly to a
 placeholder.
+
+### diff
+
+| flag | meaning |
+|---|---|
+| `--src` | path to the IV2 mod directory (required) |
+| `--catalog` | catalog to compare against (required) |
+| `--out` | a previously built pack, for the key-level view |
+| `--update` | write the merged catalog back, keeping every translation whose English is unchanged |
+| `--prune` | with `--update`, drop units whose text IV2 no longer has |
+| `--json` | write the full report to a file |
+
+This is the command that keeps the pack from rotting, and it reports four
+things:
+
+| | meaning |
+|---|---|
+| **unchanged** | English is the same, so the Korean carries over untouched |
+| **changed** | IV2 reworded the string — reported with its *old* Korean, since a small reword is usually cheap to adapt |
+| **new** | text IV2 did not have before |
+| **orphaned** | text IV2 no longer has |
+
+A reword is deliberately not reported as an unrelated add plus delete. `diff`
+pairs each orphan with whatever template now covers its representative key, so
+"this string was reworded" reads as one line instead of two unconnected ones.
+
+Orphans are **kept** by default. A string that vanishes in one version can come
+back in the next, and its translation is worth more than the bytes it costs.
+`--prune` drops them when you are sure.
+
+Tested against a simulated IV2 2.0.6 — one idea reworded, two strings added,
+one deleted:
+
+```
+unchanged            2775
+changed                 1   (IV2 reworded the text)
+new                     2
+orphaned                1
+
+>> 3 unit(s) need translating
+```
+
+and after `--update`, 2,766 of the 2,780 units are still translated. **An IV2
+update costs 3 units of work, not 2,766.** That is the whole point: the
+previous Korean pack died at version 1.2 against a 1.3.11 game because
+catching up meant redoing everything.
 
 ### glossary.json
 
