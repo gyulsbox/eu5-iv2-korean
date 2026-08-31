@@ -26,6 +26,8 @@ func main() {
 		err = runKeys(args)
 	case "build":
 		err = runBuild(args)
+	case "translate":
+		err = runTranslate(args)
 	case "-h", "--help", "help":
 		usage()
 		return
@@ -62,6 +64,10 @@ usage:
         plus metadata. Runs validate afterwards. With no catalog it emits
         English, which verifies the pipeline before any translation exists.
 
+  iv2loc translate --catalog c.json [--glossary g.json] [--model ...]
+        Fill the catalog's Korean fields via the Claude API. Only writes a
+        translation that kept every placeholder intact.
+
 extract flags:
 `)
 	ef := flag.NewFlagSet("extract", flag.ContinueOnError)
@@ -86,4 +92,10 @@ extract flags:
 	registerBuildFlags(bf, &buildOpts{})
 	bf.SetOutput(os.Stderr)
 	bf.PrintDefaults()
+
+	fmt.Fprint(os.Stderr, "\ntranslate flags:\n")
+	tf := flag.NewFlagSet("translate", flag.ContinueOnError)
+	registerTranslateFlags(tf, &translateOpts{})
+	tf.SetOutput(os.Stderr)
+	tf.PrintDefaults()
 }
