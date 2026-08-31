@@ -5,6 +5,8 @@
  iv2_idea_alert_adm_color: "green"
  iv2_desc: "Researchers cost [iv2_researcher_upkeep|e] each month.\nThey help."
  iv2_level_1: "Level 1"
+ iv2_level_2: "Level 2"
+ iv2_level_3: "Level 3"
  iv2_broken_source: "[Scope.GetName] was appointed.
  iv2_in_game_clash: "Clashes with an in_game base key"
  cw_settings_shared: "Shared With Base Game"

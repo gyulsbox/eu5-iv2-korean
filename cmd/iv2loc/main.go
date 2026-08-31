@@ -24,6 +24,8 @@ func main() {
 		err = runValidate(args)
 	case "keys":
 		err = runKeys(args)
+	case "build":
+		err = runBuild(args)
 	case "-h", "--help", "help":
 		usage()
 		return
@@ -55,6 +57,11 @@ usage:
         Reduce a localization tree to just its key names, small enough to
         share, for feeding to validate --baseline-keys.
 
+  iv2loc build --src <IV2 mod path> --out <mod dir> [--catalog c.json]
+        Generate the mod: BOM-encoded localization mirroring IV2's layout,
+        plus metadata. Runs validate afterwards. With no catalog it emits
+        English, which verifies the pipeline before any translation exists.
+
 extract flags:
 `)
 	ef := flag.NewFlagSet("extract", flag.ContinueOnError)
@@ -73,4 +80,10 @@ extract flags:
 	registerKeysFlags(kf, &keysOpts{})
 	kf.SetOutput(os.Stderr)
 	kf.PrintDefaults()
+
+	fmt.Fprint(os.Stderr, "\nbuild flags:\n")
+	bf := flag.NewFlagSet("build", flag.ContinueOnError)
+	registerBuildFlags(bf, &buildOpts{})
+	bf.SetOutput(os.Stderr)
+	bf.PrintDefaults()
 }
