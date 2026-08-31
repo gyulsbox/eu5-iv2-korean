@@ -25,6 +25,7 @@ type validateOpts struct {
 	src       string
 	out       string
 	baselines repeatedFlag
+	digests   repeatedFlag
 	srcLang   string
 	dstLang   string
 	jsonOut   string
@@ -35,6 +36,7 @@ func registerValidateFlags(fs *flag.FlagSet, o *validateOpts) {
 	fs.StringVar(&o.src, "src", "", "path to the IV2 mod directory")
 	fs.StringVar(&o.out, "out", "", "path to the generated Korean pack (omit to check the source only)")
 	fs.Var(&o.baselines, "baseline", "localization tree we must not redefine (base game or another mod); repeatable")
+	fs.Var(&o.digests, "baseline-keys", "key digest from `iv2loc keys`, for a tree too large to copy; repeatable")
 	fs.StringVar(&o.srcLang, "src-lang", "english", "source language")
 	fs.StringVar(&o.dstLang, "dst-lang", "korean", "target language")
 	fs.StringVar(&o.jsonOut, "json", "", "write the full report to this JSON file")
@@ -53,11 +55,12 @@ func runValidate(args []string) error {
 	}
 
 	res, err := validate.Run(validate.Options{
-		Source:     o.src,
-		Out:        o.out,
-		Baselines:  o.baselines,
-		SourceLang: o.srcLang,
-		TargetLang: o.dstLang,
+		Source:          o.src,
+		Out:             o.out,
+		Baselines:       o.baselines,
+		BaselineDigests: o.digests,
+		SourceLang:      o.srcLang,
+		TargetLang:      o.dstLang,
 	})
 	if err != nil {
 		return err
@@ -114,6 +117,10 @@ func reportValidate(o validateOpts, res *validate.Result) {
 		p("  localization across dlc/, in_game/, loading_screen/ and main_menu/,\n")
 		p("  and the scan walks all of them:\n")
 		p("    --baseline <EU5>/game --baseline <FUM> --baseline <GlorpUI> --baseline <CMM>\n")
+		p("\n  If the tree is too large to move around, reduce it to a key digest\n")
+		p("  first and pass that instead - only the names are needed:\n")
+		p("    iv2loc keys --src <EU5>/game --out basegame.keys\n")
+		p("    iv2loc validate --src <IV2> --baseline-keys basegame.keys\n")
 	} else {
 		p("  baseline keys known              %8d\n", len(res.BaselineKeys))
 		p("  IV2 keys that shadow a baseline  %8d\n", len(res.Shadowed))

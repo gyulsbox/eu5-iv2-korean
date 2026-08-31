@@ -21,6 +21,10 @@ type Options struct {
 	// Baselines are localization trees we must never redefine: the base
 	// game, and any other mod in the load order (FUM, Glorp UI, CMM).
 	Baselines []string
+	// BaselineDigests are key digests written by `iv2loc keys`, for when
+	// the tree itself is too large to hand over. They carry the same
+	// authority as a Baselines entry.
+	BaselineDigests []string
 
 	SourceLang string
 	TargetLang string
@@ -129,7 +133,20 @@ func Run(o Options) (*Result, error) {
 			}
 		}
 	}
-	rep.BaselineChecked = len(o.Baselines) > 0
+	for _, d := range o.BaselineDigests {
+		refs, err := ReadKeyDigestFile(d)
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range refs {
+			if _, seen := res.BaselineKeys[r.Key]; !seen {
+				res.BaselineKeys[r.Key] = BaselineRef{
+					Root: d, File: "(key digest)", Layer: r.Layer,
+				}
+			}
+		}
+	}
+	rep.BaselineChecked = len(o.Baselines) > 0 || len(o.BaselineDigests) > 0
 
 	for key := range srcValue {
 		if _, clash := res.BaselineKeys[key]; clash {

@@ -22,6 +22,8 @@ func main() {
 		err = runExtract(args)
 	case "validate":
 		err = runValidate(args)
+	case "keys":
+		err = runKeys(args)
 	case "-h", "--help", "help":
 		usage()
 		return
@@ -49,6 +51,10 @@ usage:
         Check that every translated string keeps its markup intact and that
         the pack redefines nothing the base game or another mod owns.
 
+  iv2loc keys --src <tree>... [--out keys.txt]
+        Reduce a localization tree to just its key names, small enough to
+        share, for feeding to validate --baseline-keys.
+
 extract flags:
 `)
 	ef := flag.NewFlagSet("extract", flag.ContinueOnError)
@@ -61,4 +67,10 @@ extract flags:
 	registerValidateFlags(vf, &validateOpts{})
 	vf.SetOutput(os.Stderr)
 	vf.PrintDefaults()
+
+	fmt.Fprint(os.Stderr, "\nkeys flags:\n")
+	kf := flag.NewFlagSet("keys", flag.ContinueOnError)
+	registerKeysFlags(kf, &keysOpts{})
+	kf.SetOutput(os.Stderr)
+	kf.PrintDefaults()
 }
