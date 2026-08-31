@@ -1,6 +1,7 @@
 package validate
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -80,9 +81,16 @@ func TestRunFindsShadowedSourceKeys(t *testing.T) {
 	if !res.Report.BaselineChecked {
 		t.Error("BaselineChecked false with a baseline supplied")
 	}
-	// IV2 itself redefines cw_settings_shared. Our pack must leave it alone.
-	if len(res.Shadowed) != 1 || res.Shadowed[0] != "cw_settings_shared" {
-		t.Errorf("Shadowed = %v, want [cw_settings_shared]", res.Shadowed)
+	// IV2 itself redefines two baseline keys, one in the same layer and one
+	// across layers. Our pack must leave both alone.
+	want := map[string]bool{"cw_settings_shared": true, "iv2_in_game_clash": true}
+	if len(res.Shadowed) != len(want) {
+		t.Fatalf("Shadowed = %v, want %d keys", res.Shadowed, len(want))
+	}
+	for _, k := range res.Shadowed {
+		if !want[k] {
+			t.Errorf("unexpected shadowed key %q", k)
+		}
 	}
 }
 
@@ -185,5 +193,97 @@ func TestRunListsDoNotTranslateKeys(t *testing.T) {
 func TestRunRejectsMissingSource(t *testing.T) {
 	if _, err := Run(Options{Source: "testdata/does_not_exist"}); err == nil {
 		t.Error("Run accepted a missing source directory")
+	}
+}
+
+// The base game does not keep its localization in one place: it splits it
+// across dlc/, in_game/, loading_screen/ and main_menu/, each with its own
+// localization directory. A baseline scan that only looked at <root>/localization
+// would find nothing and report a false pass, which is the most dangerous
+// possible failure for this check.
+func TestBaselineScanReachesEveryGameLayer(t *testing.T) {
+	res, err := Run(Options{
+		Source:    fixtureSource,
+		Baselines: []string{fixtureBaseline},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wantLayers := map[string]string{
+		"cw_settings_shared": "main_menu",
+		"iv2_in_game_clash":  "in_game",
+		"LOADING_TIP_1":      "loading_screen",
+		"DLC_ONLY_KEY":       "dlc",
+	}
+	for key, layer := range wantLayers {
+		ref, ok := res.BaselineKeys[key]
+		if !ok {
+			t.Errorf("baseline key %q not found; the scan missed the %s layer", key, layer)
+			continue
+		}
+		if ref.Layer != layer {
+			t.Errorf("%q layer = %q, want %q", key, ref.Layer, layer)
+		}
+	}
+}
+
+func TestShadowDetectionCrossesLayers(t *testing.T) {
+	// IV2 defines iv2_in_game_clash in main_menu while the base game owns it
+	// in in_game. A same-layer-only comparison would miss it.
+	res, err := Run(Options{
+		Source:    fixtureSource,
+		Baselines: []string{fixtureBaseline},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, k := range res.Shadowed {
+		if k == "iv2_in_game_clash" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("cross-layer collision missed; Shadowed = %v", res.Shadowed)
+	}
+	if got := res.BaselineKeys["iv2_in_game_clash"].Layer; got != "in_game" {
+		t.Errorf("collision layer = %q, want in_game", got)
+	}
+}
+
+func TestBaselineRefWhereNamesTheLayer(t *testing.T) {
+	ref := BaselineRef{Root: "/eu5/game", File: "in_game/localization/english/gui_l_english.yml", Layer: "in_game"}
+	if got := ref.Where(); !strings.Contains(got, "[in_game]") {
+		t.Errorf("Where() = %q, want it to name the layer", got)
+	}
+}
+
+func TestRunCatchesLayerMismatch(t *testing.T) {
+	// IV2 defines this key under main_menu. A pack that files its translation
+	// under in_game produces no error in game; the string is simply never
+	// seen, which is worse than a loud failure.
+	res, err := Run(Options{
+		Source: fixtureSource,
+		Out:    "testdata/out_wrong_layer",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if countRule(res.Report, RuleLayerMismatch) != 1 {
+		t.Errorf("layer-mismatch findings = %d, want 1", countRule(res.Report, RuleLayerMismatch))
+	}
+	if !keysWithRule(res.Report, RuleLayerMismatch)["iv2_ideagroup_title_adm_1"] {
+		t.Error("wrong key reported for layer mismatch")
+	}
+}
+
+func TestCorrectPackHasNoLayerMismatch(t *testing.T) {
+	res, err := Run(Options{Source: fixtureSource, Out: fixtureGood})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := countRule(res.Report, RuleLayerMismatch); n != 0 {
+		t.Errorf("layer-mismatch findings = %d on a correct pack, want 0", n)
 	}
 }

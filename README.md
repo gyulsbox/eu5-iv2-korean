@@ -69,6 +69,7 @@ is caught.
 | `do-not-translate` | error | an engine token like a colour name was translated |
 | `unknown-key` | error | the pack defines a key IV2 does not |
 | `shadows-baseline` | error | the pack defines a key the base game or another mod owns |
+| `layer-mismatch` | error | the pack files a key under a different layer than IV2 defines it in |
 | `missing-bom` | error | the game would skip the file silently |
 | `bad-header` | error | first line is not `l_korean:` |
 | `bad-filename` | error | name does not end in `_l_korean.yml`, or the file is outside `localization/korean/` |

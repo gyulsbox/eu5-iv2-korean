@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/validate"
@@ -107,12 +108,31 @@ func reportValidate(o validateOpts, res *validate.Result) {
 		// unproven until a baseline is supplied, and it is the guarantee
 		// whose absence crashed the previous pack.
 		p("  NOT CHECKED - no --baseline given.\n")
-		p("  Pass the base game's localization tree and every other mod in the\n")
-		p("  load order to prove the pack redefines nothing:\n")
+		p("  Pass the base game's root and every other mod in the load order to\n")
+		p("  prove the pack redefines nothing. Point --baseline at the directory\n")
+		p("  above the layers, not at a localization folder; EU5 splits its own\n")
+		p("  localization across dlc/, in_game/, loading_screen/ and main_menu/,\n")
+		p("  and the scan walks all of them:\n")
 		p("    --baseline <EU5>/game --baseline <FUM> --baseline <GlorpUI> --baseline <CMM>\n")
 	} else {
 		p("  baseline keys known              %8d\n", len(res.BaselineKeys))
 		p("  IV2 keys that shadow a baseline  %8d\n", len(res.Shadowed))
+
+		byLayer := map[string]int{}
+		for _, k := range res.Shadowed {
+			byLayer[res.BaselineKeys[k].Layer]++
+		}
+		if len(byLayer) > 0 {
+			layers := make([]string, 0, len(byLayer))
+			for l := range byLayer {
+				layers = append(layers, l)
+			}
+			sort.Strings(layers)
+			p("\n  by baseline layer:\n")
+			for _, l := range layers {
+				p("    %-20s %6d\n", l, byLayer[l])
+			}
+		}
 		if len(res.Shadowed) > 0 {
 			p("\n  IV2 redefines these keys itself. Our pack must leave them alone:\n")
 			for i, k := range res.Shadowed {
@@ -120,7 +140,7 @@ func reportValidate(o validateOpts, res *validate.Result) {
 					p("    ... %d more\n", len(res.Shadowed)-o.limit)
 					break
 				}
-				p("    %s\n", k)
+				p("    %-56s %s\n", trunc(k, 56), res.BaselineKeys[k].Where())
 			}
 		}
 	}
