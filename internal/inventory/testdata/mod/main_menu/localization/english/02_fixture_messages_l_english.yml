@@ -1,0 +1,8 @@
+﻿l_english:
+ WE_PERFORM_iv2_ga_select_ideagroup_adm_1_ACTION_LOG: "$iv2_message_selected_ig$ $iv2_ideagroup_title_adm_1$"
+ WE_PERFORM_iv2_ga_select_ideagroup_adm_2_ACTION_LOG: "$iv2_message_selected_ig$ $iv2_ideagroup_title_adm_2$"
+ WE_PERFORM_iv2_ga_select_ideagroup_adm_1_ACTION_BTN1: "OK"
+ WE_PERFORM_iv2_ga_select_ideagroup_adm_2_ACTION_BTN1: "OK"
+ WE_PERFORM_iv2_ga_select_ideagroup_adm_1_ACTION_MAP: ""
+ STATIC_MODIFIER_NAME_national_idea_modifier_adm_2: "$iv2_ga_select_national_idea_adm_2$"
+ iv2_level_1: "Level 1"

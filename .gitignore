@@ -1,0 +1,6 @@
+/iv2loc
+/iv2loc.exe
+*.json.tmp
+/build/
+/out/
+inventory.json
