@@ -23,8 +23,8 @@ So the first principle here is narrow and absolute:
 
 ## Status
 
-`extract`, `validate` and `keys` are implemented. `diff`, `translate` and
-`build` are not yet written.
+`extract`, `validate`, `keys` and `build` are implemented. `diff` and
+`translate` are not yet written.
 
 ## Usage
 
@@ -32,6 +32,7 @@ So the first principle here is narrow and absolute:
 iv2loc extract  --src <IV2 path> [--json inventory.json]
 iv2loc validate --src <IV2 path> [--out <pack>] [--baseline <tree>]...
 iv2loc keys     --src <tree>... [--out keys.txt]
+iv2loc build    --src <IV2 path> --out <mod dir> [--catalog c.json]
 ```
 
 ### extract
@@ -164,6 +165,79 @@ IV2 keeps all of its own localization under `main_menu/`, so our pack must
 mirror that. A translation filed under the wrong layer produces no error at
 all in game — the string is simply never seen, which is worse than a loud
 failure. `layer-mismatch` catches it.
+
+### build
+
+| flag | meaning |
+|---|---|
+| `--src` | path to the IV2 mod directory (required) |
+| `--out` | mod directory to generate (required) |
+| `--catalog` | translations to apply; omit for an English passthrough |
+| `--init-catalog` | write an empty catalog covering every translation unit, then stop |
+| `--name` `--id` `--version` `--game-version` | metadata overrides |
+| `--single-file` | one combined file instead of mirroring IV2's layout |
+| `--no-validate` | skip the validation pass that otherwise follows every build |
+
+`build` runs `validate` on its own output and exits non-zero if anything is
+wrong, so a broken pack cannot be produced quietly.
+
+**Build English first.** With no `--catalog` the pack is generated with every
+string still in English. That is not a placeholder step: it exercises the
+whole pipeline — file layout, BOM, headers, metadata — with the translation
+variable removed, so if the game refuses to load it there is exactly one
+place to look. The first run of this caught a real bug that every other check
+would have missed: the header was being written as `korean:` instead of
+`l_korean:`, which parses as nothing and would have made all 50,052 keys
+invisible while the files themselves looked perfectly fine.
+
+The passthrough is verified lossless: all 50,052 values re-read byte for byte.
+
+**What gets written.** Output mirrors IV2's own layout, one file per source
+file, under the layer IV2 uses:
+
+```
+iv2_korean/
+  .metadata/metadata.json          supported_game_version 1.3.*, IV2 as a dependency
+  .metadata/thumbnail.png          generated if absent, never overwritten
+  main_menu/localization/korean/
+    0_01_IV2_game_concepts_l_korean.yml
+    0_02_IV2_adm_ideas_l_korean.yml
+    …
+```
+
+The `0_` prefix makes the pack **deferential, not dominant**. EU5 processes
+localization in reverse alphabetical order and an earlier definition wins, so
+a leading `0` puts us last: if anything else already defines one of these keys
+in Korean, theirs stands. We are adding a language layer IV2 lacks, not
+competing for keys, so losing that race is the outcome we want.
+
+All 50,052 keys are emitted, not just the 2,766 prose ones. Cross-language
+fallback would probably cover the rest, but "probably" is not worth the 4.5 MB
+it saves — and the reference-only composites are where Korean word order will
+eventually need hand-tuning anyway.
+
+**The catalog.** `--init-catalog` writes one entry per translation unit: the
+English template, an empty `korean` field, and the key it came from. 2,777
+units, 527 KB. `translate` fills in the Korean fields; `build --catalog`
+applies them.
+
+Units are keyed by the **English template**, not by key. When IV2 changes a
+string its template changes, no unit matches, and the string is retranslated
+automatically. That is what stops the pack rotting the way the previous one
+did.
+
+Leverage is real: translating 5 units moved 7,395 keys, because `OK` alone
+covers 7,360 of them.
+
+**The fallback gate.** Every string passes `validate.Fallback` before it
+reaches disk. In the end-to-end test a deliberately broken translation — one
+that dropped a `[iv2_mod|e]` scope token — was silently replaced by its
+English source and named in the build report:
+
+```
+  1 translation(s) failed validation and shipped as English:
+    game_concept_iv2_researcher_desc
+```
 
 ## What extract found in IV2 2.0.5
 

@@ -25,6 +25,10 @@ type Entry struct {
 	// (in_game, main_menu, loading_screen), which the output must mirror.
 	Layer string `json:"layer"`
 	Line  int    `json:"line"`
+	// Version is the number after the colon in `key:0 "..."`, or -1 when the
+	// source omitted it. IV2 omits it throughout; carrying it through means
+	// the generated pack matches the source's own form.
+	Version int `json:"version"`
 	// Malformed propagates a recovered source defect from the parser.
 	Malformed bool `json:"malformed,omitempty"`
 	// Replace records that the file sat under a `replace/` directory.
@@ -167,6 +171,7 @@ func Scan(root, language string) (*Inventory, error) {
 				File:      rel,
 				Layer:     fi.Layer,
 				Line:      e.Line,
+				Version:   e.Version,
 				Replace:   isReplace,
 				Malformed: e.Malformed,
 			})
