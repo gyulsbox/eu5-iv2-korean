@@ -28,6 +28,8 @@ func main() {
 		err = runBuild(args)
 	case "translate":
 		err = runTranslate(args)
+	case "polish":
+		err = runPolish(args)
 	case "-h", "--help", "help":
 		usage()
 		return
@@ -68,6 +70,10 @@ usage:
         Fill the catalog's Korean fields via the Claude API. Only writes a
         translation that kept every placeholder intact.
 
+  iv2loc polish --catalog c.json
+        Apply the mechanical Korean cleanups to a catalog. translate already
+        does this to everything it writes.
+
 extract flags:
 `)
 	ef := flag.NewFlagSet("extract", flag.ContinueOnError)
@@ -98,4 +104,10 @@ extract flags:
 	registerTranslateFlags(tf, &translateOpts{})
 	tf.SetOutput(os.Stderr)
 	tf.PrintDefaults()
+
+	fmt.Fprint(os.Stderr, "\npolish flags:\n")
+	pf := flag.NewFlagSet("polish", flag.ContinueOnError)
+	registerPolishFlags(pf, &polishOpts{})
+	pf.SetOutput(os.Stderr)
+	pf.PrintDefaults()
 }
