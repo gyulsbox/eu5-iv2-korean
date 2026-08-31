@@ -23,8 +23,8 @@ So the first principle here is narrow and absolute:
 
 ## Status
 
-`extract`, `validate`, `keys` and `build` are implemented. `diff` and
-`translate` are not yet written.
+`extract`, `validate`, `keys`, `build` and `translate` are implemented. `diff`
+is not yet written.
 
 ## Usage
 
@@ -33,6 +33,15 @@ iv2loc extract  --src <IV2 path> [--json inventory.json]
 iv2loc validate --src <IV2 path> [--out <pack>] [--baseline <tree>]...
 iv2loc keys     --src <tree>... [--out keys.txt]
 iv2loc build    --src <IV2 path> --out <mod dir> [--catalog c.json]
+iv2loc translate --catalog c.json [--glossary glossary.json]
+```
+
+The full loop:
+
+```
+iv2loc build     --src <IV2> --init-catalog catalog.json
+iv2loc translate --catalog catalog.json --glossary glossary.json
+iv2loc build     --src <IV2> --out <pack> --catalog catalog.json
 ```
 
 ### extract
@@ -238,6 +247,60 @@ English source and named in the build report:
   1 translation(s) failed validation and shipped as English:
     game_concept_iv2_researcher_desc
 ```
+
+### translate
+
+| flag | meaning |
+|---|---|
+| `--catalog` | catalog to fill in, written back in place (required) |
+| `--glossary` | fixed term renderings |
+| `--model` | model to translate with (default `claude-haiku-4-5`) |
+| `--batch` | strings per request (default 40) |
+| `--concurrency` | requests in flight (default 4) |
+| `--limit` | translate at most this many units — use it to sample quality before committing to a full run |
+| `--retranslate` | redo units that already have a translation |
+| `--dry-run` | print what a batch would look like without calling the API |
+
+Credentials come from the SDK's own resolution order: `ANTHROPIC_API_KEY`,
+then `ANTHROPIC_AUTH_TOKEN`, then a profile stored by `ant auth login`.
+
+**Why Haiku is enough here.** The work is bounded, highly repetitive interface
+text, constrained by a glossary, with markup lifted out of reach and a hard
+validation gate behind it. At list prices the whole 2,766-unit corpus costs
+well under a dollar. `--model` takes anything else if a spot check disappoints
+— the idea descriptions are the only place a larger model would show.
+
+**Markup never reaches the model.** It sees `⟦T1⟧`, not
+`[SCOPE.sCharacter('recipient').GetName]`. It is explicitly told it may move
+placeholders wherever Korean word order requires, which is exactly what a
+sequence-based check would wrongly reject and what a multiset check correctly
+allows.
+
+**Nothing damaged is ever stored.** Every response is checked against its
+source's placeholder multiset *before* being written to the catalog. A
+translation that lost, gained or renumbered a placeholder is discarded and the
+unit stays untranslated, so a bad run leaves the catalog no worse than it found
+it, and `build` keeps English for anything still missing. Rejections are
+sampled in the report so the prompt can be tuned.
+
+**Reruns are cheap.** The catalog is the cache: `translate` only picks up units
+whose `korean` is still empty. A partial run is saved even when some batches
+fail, and rerunning finishes the rest.
+
+**The particle problem is handled in the prompt.** A placeholder's substituted
+value is unknown at translation time, so its final consonant is unknown too.
+The model is told to use the paired forms the game's own Korean uses — 을(를),
+이(가), 은(는), 와(과), 으로(로) — wherever a particle attaches directly to a
+placeholder.
+
+### glossary.json
+
+39 terms that would otherwise drift between tooltips: `Idea Group` → 이념 그룹,
+`National Idea` → 국가 이념, the four ability categories, `Casus Belli` → 명분,
+and so on. Only the terms a batch can actually use are sent with it.
+
+Extend it as you review output. A term added here applies on the next
+`translate` run; `--retranslate` redoes units that already have a translation.
 
 ## What extract found in IV2 2.0.5
 
