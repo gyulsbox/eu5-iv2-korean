@@ -14,6 +14,7 @@ import (
 
 	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/build"
 	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/inventory"
+	"github.com/gyulsbox/EUV_Idea_Variation_2_kr/internal/validate"
 )
 
 // DefaultModel is Claude Haiku 4.5. The job is bounded, highly repetitive UI
@@ -94,7 +95,8 @@ func (s Stats) Cost() float64 {
 }
 
 // Pending returns the catalog units that still need translating: prose only,
-// since reference-only and empty units have no text to translate.
+// since reference-only and empty units have no text to translate, and never a
+// unit the build will refuse to use anyway.
 func Pending(cat *build.Catalog, retranslate bool) []Item {
 	var out []Item
 	for i, u := range cat.Units {
@@ -102,6 +104,12 @@ func Pending(cat *build.Catalog, retranslate bool) []Item {
 			continue
 		}
 		if u.Korean != "" && !retranslate {
+			continue
+		}
+		// A colour name or a bare identifier is data the engine reads, so
+		// build copies it verbatim regardless. Paying to translate it would
+		// only produce a value that is then discarded.
+		if validate.DoNotTranslate(u.Rep, u.Template) {
 			continue
 		}
 		out = append(out, Item{Source: u.Template, Index: i})
@@ -171,7 +179,7 @@ func Run(ctx context.Context, client anthropic.Client, cat *build.Catalog, o Opt
 						}
 						continue
 					}
-					cat.Units[it.Index].Korean = ko
+					cat.Units[it.Index].Korean = PolishCatalogValue(ko)
 					stats.Accepted++
 				}
 			}
