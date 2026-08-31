@@ -20,6 +20,8 @@ func main() {
 	switch cmd {
 	case "extract":
 		err = runExtract(args)
+	case "validate":
+		err = runValidate(args)
 	case "-h", "--help", "help":
 		usage()
 		return
@@ -43,10 +45,20 @@ usage:
         Parse the mod's source localization and report how many keys exist
         and how many distinct strings actually have to be translated.
 
-flags:
+  iv2loc validate --src <IV2 mod path> [--out <pack>] [--baseline <tree>]...
+        Check that every translated string keeps its markup intact and that
+        the pack redefines nothing the base game or another mod owns.
+
+extract flags:
 `)
-	fs := flag.NewFlagSet("extract", flag.ContinueOnError)
-	registerExtractFlags(fs, &extractOpts{})
-	fs.SetOutput(os.Stderr)
-	fs.PrintDefaults()
+	ef := flag.NewFlagSet("extract", flag.ContinueOnError)
+	registerExtractFlags(ef, &extractOpts{})
+	ef.SetOutput(os.Stderr)
+	ef.PrintDefaults()
+
+	fmt.Fprint(os.Stderr, "\nvalidate flags:\n")
+	vf := flag.NewFlagSet("validate", flag.ContinueOnError)
+	registerValidateFlags(vf, &validateOpts{})
+	vf.SetOutput(os.Stderr)
+	vf.PrintDefaults()
 }
