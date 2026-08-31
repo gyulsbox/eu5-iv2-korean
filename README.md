@@ -1,472 +1,207 @@
 # iv2loc
 
-Toolchain for building and maintaining a Korean localization pack for the
-Europa Universalis V mod [The Idea Variation 2][iv2] (workshop ID
-`3599735023`).
+Europa Universalis V 모드 [The Idea Variation 2][iv2](워크샵 ID `3599735023`)의
+한국어 번역 모드와, 그걸 만들고 유지하는 도구.
 
 [iv2]: https://steamcommunity.com/sharedfiles/filedetails/?id=3599735023
 
-## Why this exists
+기존 커뮤니티 한글패치는 게임을 크래시시켰다. 원인은 번역이 아니라 포장이었다.
+IV2와 무관한 파일 11개(`cw_settings`, `languages`, `jomini/multiplayer_gui`)를
+같이 던져놔서 게임 본체 로컬을 덮었고, 키 충돌 153건이 났다.
 
-The existing community Korean pack crashes EU5. The cause is not the
-translation, it is the packaging: it ships 12 files into
-`localization/korean/`, only one of which is about IV2. The other 11 overwrite
-base-game and third-party mod localization, producing 153 key collisions —
-42 in `cw_settings_l_korean.yml`, 18 in `languages.yml`, 16 under
-`jomini/multiplayer_gui/`. EU5 already ships official Korean; a stale pack
-built against version 1.2 stomps it, and the game hard-crashes about 26
-seconds in during mod script validation.
+**그래서 이 프로젝트의 제1원칙: IV2가 정의한 키만 번역한다.**
+`iv2loc`은 IV2의 영어 파일에서 뽑은 키만 출력하므로 구조적으로 본체를 건드릴 수 없다.
 
-So the first principle here is narrow and absolute:
+현재 상태: **번역 완료.** 유니크 문자열 2,766개 전부 번역 → 실제 키 10,513개 한국어화.
 
-> **Translate only the keys IV2 itself defines. Never touch a base-game key.**
+---
 
-## Status
+## 설치 (플레이만 할 경우)
 
-Complete: `extract`, `diff`, `validate`, `translate`, `build`, plus `keys` and
-`polish`.
+1. 빌드된 팩(`iv2_korean` 폴더)을 아래 경로에 넣는다.
 
-## Usage
+   ```
+   %USERPROFILE%\Documents\Paradox Interactive\Europa Universalis V\mod\iv2_korean\
+   ```
 
-```
-iv2loc extract  --src <IV2 path> [--json inventory.json]
-iv2loc validate --src <IV2 path> [--out <pack>] [--baseline <tree>]...
-iv2loc keys     --src <tree>... [--out keys.txt]
-iv2loc build    --src <IV2 path> --out <mod dir> [--catalog c.json]
-iv2loc translate --catalog c.json [--glossary glossary.json]
-iv2loc diff     --src <IV2 path> --catalog c.json [--out <pack>] [--update]
-iv2loc polish   --catalog c.json
-```
+   폴더 경로에 **한글이 들어가면 안 된다.** 게임이 로드에 실패한다.
 
-First build:
+2. 런처에서 활성화하고, 로드 순서를 **IV2 뒤**에 둔다.
+3. 게임 언어를 한국어로 설정한다.
 
-```
-iv2loc build     --src <IV2> --init-catalog catalog.json
-iv2loc translate --catalog catalog.json --glossary glossary.json
-iv2loc build     --src <IV2> --out <pack> --catalog catalog.json
-```
+빌드된 팩은 저장소에 없다(생성물이라 커밋하지 않음). 아래 방법으로 직접 빌드하거나,
+Release에 올려둔 zip을 받으면 된다.
 
-After an IV2 update, the same three commands with `diff` in front:
+---
 
-```
-iv2loc diff      --src <IV2> --catalog catalog.json --out <pack> --update
-iv2loc translate --catalog catalog.json --glossary glossary.json
-iv2loc build     --src <IV2> --out <pack> --catalog catalog.json
+## 실행 방법
+
+### 요구사항
+
+- Go 1.24 이상
+- IV2 모드 경로 (보통 `C:\Program Files (x86)\Steam\steamapps\workshop\content\3450310\3599735023`)
+- 번역을 새로 돌릴 때만: Anthropic API 키 (`ANTHROPIC_API_KEY` 환경변수)
+
+### 빌드
+
+```bash
+git clone https://github.com/gyulsbox/EUV_Idea_Variation_2_kr
+cd EUV_Idea_Variation_2_kr
+go build -o iv2loc ./cmd/iv2loc
 ```
 
-### extract
+### 모드 만들기
 
-| flag | meaning |
-|---|---|
-| `--src` | path to the IV2 mod directory (required) |
-| `--lang` | source language to read (default `english`) |
-| `--json` | write the full inventory, including every translation group, to a file |
-| `--top` | how many of the largest prose groups to list (default 15) |
-| `--show-foreign` | list every un-namespaced key shape instead of the top 25 |
+이미 번역된 `catalog.json`이 저장소에 있으므로, **API 키 없이 바로 만들 수 있다.**
 
-### validate
+```bash
+./iv2loc build \
+  --src "C:/Program Files (x86)/Steam/steamapps/workshop/content/3450310/3599735023" \
+  --out "$USERPROFILE/Documents/Paradox Interactive/Europa Universalis V/mod/iv2_korean" \
+  --catalog catalog.json
+```
 
-| flag | meaning |
-|---|---|
-| `--src` | path to the IV2 mod directory (required) |
-| `--out` | the generated Korean pack; omit to run source-side checks only |
-| `--baseline` | a localization tree we must not redefine; repeatable |
-| `--json` | write the full report to a file |
-| `--baseline-keys` | key digest from `iv2loc keys`, when the tree is too large to move; repeatable |
-| `--limit` | findings to print per rule (default 20) |
+빌드가 끝나면 자동으로 `validate`가 돌고, 문제가 있으면 0이 아닌 코드로 종료한다.
 
-### keys
+### 그 외 명령
 
-Reduces a localization tree to just its key names and layers. Values are what
-make such a tree large, so dropping them turns something impractical to move
-into a small text file. Only useful as input to `validate --baseline-keys`.
+```bash
+./iv2loc extract  --src <IV2>                        # 키가 몇 개인지, 실제 번역 대상이 몇 개인지
+./iv2loc validate --src <IV2> --out <팩>             # 토큰 무결성 + 본체 키 침범 검사
+./iv2loc diff     --src <IV2> --catalog catalog.json # IV2 업데이트 후 뭐가 바뀌었는지
+./iv2loc polish   --catalog catalog.json             # 한국어 조사 기계적 교정
+./iv2loc keys     --src <트리> --out keys.txt        # 로컬 트리를 키 이름만으로 축약
+```
 
-Exits non-zero when there is any blocking finding, so it drops straight into
-a build script.
+`-h`로 각 명령의 플래그를 볼 수 있다.
 
-## What validate enforces
+### 번역을 직접 돌리기
 
-Every rule below is covered by a test that feeds it a violation and asserts it
-is caught.
+`catalog.json`을 비우고 다시 하거나, 새로 생긴 문자열만 채울 때:
 
-| rule | severity | meaning |
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+./iv2loc translate --catalog catalog.json --glossary glossary.json
+```
+
+기본 모델은 `claude-haiku-4-5`. 전체 2,766개를 돌려도 1달러 미만이다.
+`--model`로 바꿀 수 있고, `--limit 50`으로 품질을 먼저 표본 확인할 수 있다.
+`--dry-run`은 API를 호출하지 않고 프롬프트만 보여준다.
+
+### IV2가 업데이트되면
+
+세 줄이면 따라잡는다.
+
+```bash
+./iv2loc diff      --src <새 IV2> --catalog catalog.json --out <팩> --update
+./iv2loc translate --catalog catalog.json --glossary glossary.json
+./iv2loc build     --src <새 IV2> --out <팩> --catalog catalog.json
+```
+
+번역 단위는 **키가 아니라 영어 원문**으로 색인된다. 원문이 안 바뀐 문자열은 번역을
+그대로 유지하므로, 업데이트 비용이 전체가 아니라 실제로 바뀐 것만큼만 든다.
+실측(문구 1개 수정 + 2개 추가 + 1개 삭제): **2,766개가 아니라 3개**만 다시 번역.
+
+---
+
+## 번역 고치기
+
+- **용어가 들쭉날쭉하다** → `glossary.json`에 추가 후
+  `./iv2loc translate --catalog catalog.json --glossary glossary.json --retranslate`
+- **문장 하나가 어색하다** → `catalog.json`에서 해당 유닛의 `korean`을 직접 고치고 `build`
+
+`catalog.json`의 각 유닛은 이렇게 생겼다. `members`가 그 수정이 몇 개 키에 퍼지는지 알려준다.
+
+```json
+{ "template": "Level ⟦N1⟧", "korean": "레벨 ⟦N1⟧",
+  "rep": "iv2_level_1", "class": "prose", "members": 7 }
+```
+
+---
+
+## 설계 요점
+
+**⟦T1⟧ / ⟦N1⟧ 플레이스홀더.** 파라독스 마크업(`$VAR$`, `[Scope.Func]`, `#bold`, `£icon£`,
+`@key!`, `\n`)과 숫자를 번역기에 넘기기 전에 번호 붙은 자리표시자로 들어낸다. 덕분에
+마크업이 깨질 수가 없고, 마크업·숫자만 다른 문자열이 하나로 합쳐진다.
+**키 50,052개 → 번역 단위 2,766개 (18배 축소).** 번호식이라 한국어 어순대로 재배치해도 된다.
+
+**토큰 멀티셋 불변식.** 원문과 번역문의 마크업 토큰 개수가 같아야 한다. 순서는 안 본다
+(한국어는 어순이 바뀌므로). 어긋나면 그 키는 **영어 원문으로 되돌린다.**
+→ 번역이 틀리면 게임이 이상하게 읽힐 뿐, 죽지는 않는다.
+
+**조사 처리.** `⟦T1⟧을(를)`처럼 자리표시자 뒤에 붙는 조사는 값을 모르니 짝 형태를 쓴다.
+하지만 `build`가 숫자를 넣는 순간 값을 알게 되므로 거기서 다시 푼다
+(`⟦N1⟧으로(로)` → `4로`). 최종 팩에 남은 짝 형태는 전부 엔진이 런타임에 채우는 자리 뒤다.
+
+**출력.** IV2의 파일 구조를 그대로 미러링하고, `main_menu/localization/korean/` 아래에
+`0_` 접두사로 쓴다. EU5는 로컬 파일을 역알파벳순으로 처리하고 먼저 정의된 키가 이기므로,
+`0_`은 우리를 **꼴찌**로 만든다 — 누가 이미 그 키를 한국어로 정의했으면 그쪽이 이긴다.
+우리는 IV2에 없는 언어 레이어를 채우는 거지 키를 뺏는 게 아니다.
+
+**UTF-8 BOM 필수.** BOM 없으면 EU5가 파일을 조용히 무시한다. 에러도 안 난다.
+
+---
+
+## validate가 잡는 것
+
+| 규칙 | 심각도 | 내용 |
 |---|---|---|
-| `token-mismatch` | error | the translation lost, gained or renamed markup |
-| `leaked-placeholder` | error | a `⟦T1⟧` survived into the output; build failed to substitute |
-| `empty-translation` | error | a non-empty source became an empty string |
-| `do-not-translate` | error | an engine token like a colour name was translated |
-| `unknown-key` | error | the pack defines a key IV2 does not |
-| `shadows-baseline` | error | the pack defines a key the base game or another mod owns |
-| `layer-mismatch` | error | the pack files a key under a different layer than IV2 defines it in |
-| `layer-mismatch` | error | the pack files a key under a different layer than IV2 defines it in |
-| `missing-bom` | error | the game would skip the file silently |
-| `bad-header` | error | first line is not `l_korean:` |
-| `bad-filename` | error | name does not end in `_l_korean.yml`, or the file is outside `localization/korean/` |
-| `replace-dir` | error | a key sits under `replace/`, which should never be necessary |
-| `duplicate-key` | warn | defined in more than one output file |
-| `untranslated` | warn | prose identical to the English source |
-| `malformed-source` | warn | IV2's own defect, recovered |
+| `token-mismatch` | error | 마크업 유실·추가·변조 |
+| `leaked-placeholder` | error | `⟦T1⟧`이 출력까지 살아남음 |
+| `empty-translation` | error | 비어있지 않은 원문이 빈 문자열로 |
+| `do-not-translate` | error | 엔진이 읽는 값(색상명 등)을 번역함 |
+| `unknown-key` | error | IV2에 없는 키를 만듦 |
+| `shadows-baseline` | error | 본체·타 모드 키 재정의 |
+| `layer-mismatch` | error | IV2와 다른 레이어에 키를 넣음 |
+| `missing-bom` | error | 게임이 파일을 무시하게 됨 |
+| `bad-header` / `bad-filename` | error | 로드되지 않는 형식 |
+| `replace-dir` | error | `replace/` 사용 = 설계 이탈 신호 |
+| `duplicate-key` / `untranslated` / `malformed-source` | warn | |
 
-The central one is `token-mismatch`. Its invariant is that the multiset of
-markup tokens in a source string equals the multiset in its translation. The
-multiset is order-insensitive on purpose: Korean word order moves clauses, and
-a translation that reorders `$A$` and `$B$` is correct while one that drops
-`$B$` is not.
+각 규칙마다 위반 케이스를 먹여서 잡히는지 확인하는 테스트가 있다.
 
-Any key that fails validation is listed in `fallback_keys`, and
-`validate.Fallback` returns the English source for it. That is the guarantee
-worth stating plainly: **a bad translation can make the game read wrong, but it
-cannot make the game crash.**
+**본체 키 충돌 검사는 기본적으로 `NOT CHECKED`로 나온다.** 비교할 트리를 안 주면
+통과라고 말하지 않는다 — 없는 걸 통과로 처리하는 게 기존 팩이 한 실수다.
+증명하려면 본체 경로를 준다(레이어 위 디렉터리를 지정. EU5는 로컬을
+`game/{dlc,in_game,loading_screen,main_menu}/localization/`으로 쪼개 놓는데 전부 훑는다):
 
-### The collision check is optional, and on IV2 2.0.5 it finds nothing
-
-The rule that actually keeps us out of the base game is `unknown-key`: the
-pack may only define keys that appear in IV2's own English files. That is
-structural, needs nothing from outside the mod, and is exactly what the old
-pack violated by shipping 11 files of stale base-game and third-party
-localization that had nothing to do with IV2.
-
-`shadows-baseline` is a second line of defence for one narrow case: IV2 itself
-redefining a key the base game owns. That case can be measured without the
-base game at all:
-
-```
-un-namespaced keys                     6249
-  ...whose value references iv2        5953   <- clearly IV2's own
-  ...whose value never mentions iv2     296   <- candidates
+```bash
+./iv2loc validate --src <IV2> --out <팩> --baseline "<EU5>/game"
 ```
 
-and all 296 candidates turn out to be IV2's too — `iv_guard_infantry_age_1`,
-`rule_iv_game_rule_idea_group_limit`, `setting_idea_group_limit_1`,
-`flogi_debug_1_op_1`, `TAB_TOOLTIP_NAT_IDEA_SUB_ADM_CLICK_1`. Every one
-carries an `iv_` prefix or names an Idea Variation concept. **IV2's
-localization contains no base-game key**, so this check has nothing to find
-and is not a prerequisite for building.
+트리가 너무 크면 키 이름만 뽑아서 줘도 된다:
 
-It stays because it costs nothing and a future IV2 version could add a
-colliding key, which `diff` would surface. With no baseline given it reports
-`NOT CHECKED` rather than a pass, since silence would read as a guarantee it
-has not made.
-
-If you do want to run it and the tree is inconveniently large, reduce it to
-key names first:
-
-```
-iv2loc keys --src "<EU5>/game" --out basegame.keys
-iv2loc validate --src <IV2> --out <pack> --baseline-keys basegame.keys
+```bash
+./iv2loc keys     --src "<EU5>/game" --out basegame.keys
+./iv2loc validate --src <IV2> --out <팩> --baseline-keys basegame.keys
 ```
 
-`--baseline` takes the directory **above** the layers. EU5 does not keep its
-localization in one place; it splits it across four layers, each with its own
-tree:
+참고로 측정해보니 IV2 로컬에 본체 키는 없다. 네임스페이스 없는 키 6,249개 중
+5,953개는 값이 iv2를 참조하고, 나머지 296개도 전부 `iv_` 접두사거나 Idea Variation
+개념 이름이다. 그래서 이 검사는 실질적으로 찾을 게 없고, 빌드 전제조건도 아니다.
 
-```
-game/dlc/<dlc name>/localization/{english,korean}/…
-game/in_game/localization/{english,korean}/…
-game/loading_screen/localization/{english,korean}/…
-game/main_menu/localization/{english,korean}/…
-```
+---
 
-The scan walks all of them, so one `--baseline <EU5>/game` covers the lot, and
-a test asserts a key is found in each of the four. A scan that only looked at
-`<root>/localization` would find nothing and report a clean pass, which is the
-worst possible outcome for this particular check.
+## 개발
 
-Baselines are read in both English and Korean, because a key the base game
-defines in either language is one we must not touch. Matching ignores the
-layer — a base-game key in `in_game` is still a key IV2 must not redefine from
-`main_menu` — but findings name the layer, since a same-layer collision is
-unambiguous while a cross-layer one depends on load timing.
-
-### Layers matter for our output too
-
-IV2 keeps all of its own localization under `main_menu/`, so our pack must
-mirror that. A translation filed under the wrong layer produces no error at
-all in game — the string is simply never seen, which is worse than a loud
-failure. `layer-mismatch` catches it.
-
-### build
-
-| flag | meaning |
-|---|---|
-| `--src` | path to the IV2 mod directory (required) |
-| `--out` | mod directory to generate (required) |
-| `--catalog` | translations to apply; omit for an English passthrough |
-| `--init-catalog` | write an empty catalog covering every translation unit, then stop |
-| `--name` `--id` `--version` `--game-version` | metadata overrides |
-| `--single-file` | one combined file instead of mirroring IV2's layout |
-| `--no-validate` | skip the validation pass that otherwise follows every build |
-
-`build` runs `validate` on its own output and exits non-zero if anything is
-wrong, so a broken pack cannot be produced quietly.
-
-**Build English first.** With no `--catalog` the pack is generated with every
-string still in English. That is not a placeholder step: it exercises the
-whole pipeline — file layout, BOM, headers, metadata — with the translation
-variable removed, so if the game refuses to load it there is exactly one
-place to look. The first run of this caught a real bug that every other check
-would have missed: the header was being written as `korean:` instead of
-`l_korean:`, which parses as nothing and would have made all 50,052 keys
-invisible while the files themselves looked perfectly fine.
-
-The passthrough is verified lossless: all 50,052 values re-read byte for byte.
-
-**What gets written.** Output mirrors IV2's own layout, one file per source
-file, under the layer IV2 uses:
-
-```
-iv2_korean/
-  .metadata/metadata.json          supported_game_version 1.3.*, IV2 as a dependency
-  .metadata/thumbnail.png          generated if absent, never overwritten
-  main_menu/localization/korean/
-    0_01_IV2_game_concepts_l_korean.yml
-    0_02_IV2_adm_ideas_l_korean.yml
-    …
-```
-
-The `0_` prefix makes the pack **deferential, not dominant**. EU5 processes
-localization in reverse alphabetical order and an earlier definition wins, so
-a leading `0` puts us last: if anything else already defines one of these keys
-in Korean, theirs stands. We are adding a language layer IV2 lacks, not
-competing for keys, so losing that race is the outcome we want.
-
-All 50,052 keys are emitted, not just the 2,766 prose ones. Cross-language
-fallback would probably cover the rest, but "probably" is not worth the 4.5 MB
-it saves — and the reference-only composites are where Korean word order will
-eventually need hand-tuning anyway.
-
-**The catalog.** `--init-catalog` writes one entry per translation unit: the
-English template, an empty `korean` field, and the key it came from. 2,777
-units, 527 KB. `translate` fills in the Korean fields; `build --catalog`
-applies them.
-
-Units are keyed by the **English template**, not by key. When IV2 changes a
-string its template changes, no unit matches, and the string is retranslated
-automatically. That is what stops the pack rotting the way the previous one
-did.
-
-Leverage is real: translating 5 units moved 7,395 keys, because `OK` alone
-covers 7,360 of them.
-
-**The fallback gate.** Every string passes `validate.Fallback` before it
-reaches disk. In the end-to-end test a deliberately broken translation — one
-that dropped a `[iv2_mod|e]` scope token — was silently replaced by its
-English source and named in the build report:
-
-```
-  1 translation(s) failed validation and shipped as English:
-    game_concept_iv2_researcher_desc
-```
-
-### translate
-
-| flag | meaning |
-|---|---|
-| `--catalog` | catalog to fill in, written back in place (required) |
-| `--glossary` | fixed term renderings |
-| `--model` | model to translate with (default `claude-haiku-4-5`) |
-| `--batch` | strings per request (default 40) |
-| `--concurrency` | requests in flight (default 4) |
-| `--limit` | translate at most this many units — use it to sample quality before committing to a full run |
-| `--retranslate` | redo units that already have a translation |
-| `--dry-run` | print what a batch would look like without calling the API |
-
-Credentials come from the SDK's own resolution order: `ANTHROPIC_API_KEY`,
-then `ANTHROPIC_AUTH_TOKEN`, then a profile stored by `ant auth login`.
-
-**Why Haiku is enough here.** The work is bounded, highly repetitive interface
-text, constrained by a glossary, with markup lifted out of reach and a hard
-validation gate behind it. At list prices the whole 2,766-unit corpus costs
-well under a dollar. `--model` takes anything else if a spot check disappoints
-— the idea descriptions are the only place a larger model would show.
-
-**Markup never reaches the model.** It sees `⟦T1⟧`, not
-`[SCOPE.sCharacter('recipient').GetName]`. It is explicitly told it may move
-placeholders wherever Korean word order requires, which is exactly what a
-sequence-based check would wrongly reject and what a multiset check correctly
-allows.
-
-**Nothing damaged is ever stored.** Every response is checked against its
-source's placeholder multiset *before* being written to the catalog. A
-translation that lost, gained or renumbered a placeholder is discarded and the
-unit stays untranslated, so a bad run leaves the catalog no worse than it found
-it, and `build` keeps English for anything still missing. Rejections are
-sampled in the report so the prompt can be tuned.
-
-**Reruns are cheap.** The catalog is the cache: `translate` only picks up units
-whose `korean` is still empty. A partial run is saved even when some batches
-fail, and rerunning finishes the rest.
-
-**The particle problem is handled in the prompt.** A placeholder's substituted
-value is unknown at translation time, so its final consonant is unknown too.
-The model is told to use the paired forms the game's own Korean uses — 을(를),
-이(가), 은(는), 와(과), 으로(로) — wherever a particle attaches directly to a
-placeholder.
-
-### diff
-
-| flag | meaning |
-|---|---|
-| `--src` | path to the IV2 mod directory (required) |
-| `--catalog` | catalog to compare against (required) |
-| `--out` | a previously built pack, for the key-level view |
-| `--update` | write the merged catalog back, keeping every translation whose English is unchanged |
-| `--prune` | with `--update`, drop units whose text IV2 no longer has |
-| `--json` | write the full report to a file |
-
-This is the command that keeps the pack from rotting, and it reports four
-things:
-
-| | meaning |
-|---|---|
-| **unchanged** | English is the same, so the Korean carries over untouched |
-| **changed** | IV2 reworded the string — reported with its *old* Korean, since a small reword is usually cheap to adapt |
-| **new** | text IV2 did not have before |
-| **orphaned** | text IV2 no longer has |
-
-A reword is deliberately not reported as an unrelated add plus delete. `diff`
-pairs each orphan with whatever template now covers its representative key, so
-"this string was reworded" reads as one line instead of two unconnected ones.
-
-Orphans are **kept** by default. A string that vanishes in one version can come
-back in the next, and its translation is worth more than the bytes it costs.
-`--prune` drops them when you are sure.
-
-Tested against a simulated IV2 2.0.6 — one idea reworded, two strings added,
-one deleted:
-
-```
-unchanged            2775
-changed                 1   (IV2 reworded the text)
-new                     2
-orphaned                1
-
->> 3 unit(s) need translating
-```
-
-and after `--update`, 2,766 of the 2,780 units are still translated. **An IV2
-update costs 3 units of work, not 2,766.** That is the whole point: the
-previous Korean pack died at version 1.2 against a 1.3.11 game because
-catching up meant redoing everything.
-
-### glossary.json
-
-39 terms that would otherwise drift between tooltips: `Idea Group` → 이념 그룹,
-`National Idea` → 국가 이념, the four ability categories, `Casus Belli` → 명분,
-and so on. Only the terms a batch can actually use are sent with it.
-
-Extend it as you review output. A term added here applies on the next
-`translate` run; `--retranslate` redoes units that already have a translation.
-
-## What extract found in IV2 2.0.5
-
-```
-total keys defined               50052
-unique values (exact)            18616
-translation groups                2777
-
-CLASS                      KEYS     GROUPS
-empty                      4221          1
-reference-only            35249         10
-prose                     10582       2766
-```
-
-**2,766 strings need translating**, about 133 KB of source prose — an 18x
-reduction from the raw key count. Two mechanisms get it there.
-
-**Reference-only values.** 35,249 keys (70%) hold no prose at all. They are
-pure `$key$` chains that the engine expands at display time, e.g.
-
-```
-WE_PERFORM_iv2_ga_select_ideagroup_adm_2_ACTION_LOG: "$iv2_message_selected_ig$ $iv2_ideagroup_title_adm_2$"
-```
-
-Translating the handful of leaf strings these reference translates all of
-them. They collapse into 10 groups.
-
-**Placeholder templating.** Before grouping, every markup token becomes `⟦T1⟧`,
-`⟦T2⟧` … and every remaining digit run becomes `⟦N1⟧`, `⟦N2⟧` …:
-
-```
-"Game Rule $setting_iv2_bonus_3$ gives 10%"  ->  "Game Rule ⟦T1⟧ gives ⟦N1⟧%"
-```
-
-Strings differing only in their markup or numbers collapse into one unit. The
-placeholders are indexed rather than positional, so a Korean translation is
-free to reorder them and reconstruction still puts the right value back.
-
-This is verified lossless: `Templatize` → `Detemplatize` and `Value` → `Quote`
-→ `Parse` both round-trip byte for byte across all 50,052 real strings.
-
-## Findings that constrain the later stages
-
-**340 un-namespaced key shapes (6,249 keys).** These carry no `iv2` marker and
-are indistinguishable from base-game keys by inspection:
-
-```
-STATIC_MODIFIER_NAME_national_idea_modifier_adm_2_1
-ADD_IDEAGROUP_SLOT_TOOLTIP_ADM
-IV_IDEAGROUP_COST_TT_ADM
-```
-
-They are engine-prefixed keys naming IV2-owned objects, so they are almost
-certainly ours to translate — but "almost certainly" is what killed the last
-pack. `validate --baseline` settles it, and until it is run against the real
-trees this stays unproven.
-
-**62 keys must never be translated,** and `validate` refuses them. 26 are
-`iv2_*_color`, whose value is the literal string `green` or `yellow` that the
-engine looks up as a colour. The other 36 hold their own key name as their
-value, e.g. `iv2_idea_alert: "iv2_idea_alert"`. Whether those are engine
-lookups or an upstream oversight, copying them verbatim gives Korean players
-exactly what English players see, while translating them risks breaking an
-alert. Every one was checked by hand; the rule has no false positives on
-IV2 2.0.5.
-
-**8 keys are malformed upstream.** IV2 ships eight values with a missing
-closing quote, all in `01_IV2_setup_l_english.yml`:
-
-```
-iv2_appoint_researcher_adm_act_past: "[SCOPE.sCharacter('recipient').GetName] was appointed as [iv2_researcher_adm|e].
-```
-
-The parser recovers them at end of line and flags them rather than dropping the
-keys.
-
-**Korean particles are an open problem.** A template like `⟦T1⟧를 선택했습니다`
-picks the wrong particle depending on whether the substituted noun ends in a
-consonant. EU5's own Korean uses the `을(를)` form. Whatever `translate` emits
-has to follow that convention.
-
-## EU5 localization rules this tool must honour
-
-| rule | detail |
-|---|---|
-| encoding | UTF-8 **with BOM**. Without it the game silently ignores the file. |
-| file name | must end in `_l_korean.yml` |
-| load order | files are processed in reverse alphabetical order; a leading `0` applies last |
-| overwriting | a later key does not override an earlier one; overriding requires `localization/korean/replace/` |
-| header | first line is `l_korean:` |
-| key form | `key:0 "text"`, where the `:0` version number is optional |
-| layout | `<mod>/{in_game,main_menu,loading_screen}/localization/korean/*.yml` |
-| metadata | `.metadata/metadata.json` plus `.metadata/thumbnail.png` |
-| install path | `%USERPROFILE%/Documents/Paradox Interactive/Europa Universalis V/mod/<name>/` |
-| path charset | ASCII only — non-ASCII mod paths fail to load |
-
-Note that IV2 puts all its localization under `main_menu/`, and that we are
-translating keys IV2 defines rather than overriding anything, so `replace/`
-should never be needed. If it starts looking necessary, that is a signal we
-have wandered into base-game keys and the design needs revisiting.
-
-## Development
-
-```
+```bash
 go test ./...
-go run ./cmd/iv2loc extract --src <IV2 path>
 ```
 
-`internal/paradox` parses the format and scans markup tokens.
-`internal/inventory` walks a mod, classifies values and groups them into
-translation units. Fixtures under `internal/inventory/testdata/mod` are trimmed
-from real IV2 content and include the BOM-less file, the duplicate key and the
-malformed entry that the real mod contains.
+| 패키지 | 역할 |
+|---|---|
+| `internal/paradox` | 파라독스 yml 파서 + 마크업 토큰 스캐너 |
+| `internal/inventory` | 모드 순회, 값 분류, 번역 단위 그룹핑 |
+| `internal/validate` | 불변식 검사, 영어 폴백 |
+| `internal/korean` | 조사 기계적 교정 |
+| `internal/translate` | Claude API 호출, 용어집, 재시도 |
+| `internal/build` | 팩 생성, 메타데이터 |
+| `internal/diff` | 업데이트 비교, 카탈로그 병합 |
+
+파라독스 `.yml`은 **YAML이 아니다.** 값은 항상 따옴표로 감싸이고, 키에 버전 번호가
+붙으며, 값 안의 `#bold` 같은 포맷 토큰이 YAML 주석 문법과 충돌한다. 표준 YAML 파서를
+쓰면 망가진다.
+
+테스트 픽스처(`internal/*/testdata`)는 실제 IV2에서 잘라냈고, IV2가 실제로 가진 결함을
+포함한다 — BOM 없는 파일, 중복 키, 닫는 따옴표가 빠진 값 8개.
