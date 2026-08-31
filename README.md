@@ -10,6 +10,14 @@ Europa Universalis V 모드 [The Idea Variation 2][iv2](워크샵 ID `3599735023
 **번역은 완료된 상태입니다.** 유니크 문자열 2,766개를 번역했고, 실제 게임 키로는
 10,513개가 한국어로 나옵니다.
 
+| | |
+|---|---|
+| 기준 IV2 버전 | **2.0.5** (2026-07-14, flogi) |
+| 게임 버전 | 1.3.11 (`supported_game_version` `1.3.*`) |
+| 필요 모드 | The Idea Variation 2, Community Mod Framework |
+
+IV2가 이 버전보다 올라가면 [IV2가 업데이트되면](#iv2가-업데이트되면)을 봐주세요.
+
 ---
 
 ## 설치 (플레이만 하실 경우)
